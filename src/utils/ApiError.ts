@@ -3,12 +3,14 @@ class ApiError<T> extends Error {
   data: null;
   success: boolean;
   errors: Array<T>;
+  message: string;
   constructor(
     statusCode: any,
     message = "Something went wrong",
     errors = [],
     stack: string | undefined = ""
   ) {
+    console.log(message)
     super(message);
     this.statusCode = statusCode;
     this.data = null;
