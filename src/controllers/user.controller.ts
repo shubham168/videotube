@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError";
-import { User } from "../models/User/User.model";
+import { User } from "../models/User.model";
 import { uploadOnCloudinary } from "../utils/cloudinary";
 import { ApiResponse } from "../utils/ApiResponse";
 import jwt from "jsonwebtoken";
@@ -208,4 +208,122 @@ const refreshAccessToken = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(401, "Invalid refresh token");
   }
 });
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+const changeCurrentPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    if (newPassword !== confirmPassword) {
+      new ApiError(400, "New password and Confirm password do not match ");
+    }
+
+    //@ts-ignore
+    const user = await User.findById(req.user?.id);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+    if (!isPasswordCorrect) {
+      new ApiError(400, "Old password is wrong");
+    }
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "Password changed successfully"));
+  }
+);
+
+const getCurrentUser = asyncHandler((req: Request, res: Response) => {
+  return (
+    res
+      .status(200)
+      //@ts-ignore
+      .json(new ApiResponse(200, req.user, "current user fetched successfully"))
+  );
+});
+
+const updateAccountDetails = asyncHandler((req: Request, res: Response) => {
+  const { fullName, email } = req.body;
+
+  if (!fullName || !email) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  const user = User.findByIdAndUpdate(
+    //@ts-ignore
+    req.user._id,
+    { $set: { fullName, email } },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully"));
+});
+
+const updateUserAvatar = asyncHandler(async (req: Request, res: Response) => {
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    new ApiError(400, "Avatar file is missing");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath!);
+
+  if (!avatar?.url) {
+    throw new ApiError(400, "Error while uploading avatar");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    //@ts-ignore
+    req?.user._id,
+    {
+      $set: { avatar: avatar.url },
+    },
+    { new: true }
+  ).select("-password");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar changed successfully"));
+});
+
+const updateUserCoverImage = asyncHandler(
+  async (req: Request, res: Response) => {
+    const coverImageLocalPath = req.file?.path;
+
+    if (!coverImageLocalPath) {
+      new ApiError(400, "Cover Image file is missing");
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath!);
+
+    if (!coverImage?.url) {
+      throw new ApiError(400, "Error while uploading cover image");
+    }
+
+    const user = await User.findByIdAndUpdate(
+      //@ts-ignore
+      req?.user._id,
+      {
+        $set: { coverImage: coverImage.url },
+      },
+      { new: true }
+    ).select("-password");
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, user, "Cover image changed successfully"));
+  }
+);
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateUserCoverImage,
+  updateUserAvatar,
+  updateAccountDetails,
+};
