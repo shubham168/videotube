@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.ts",
-    "debug": "nodemon  src/index.ts"
+    "debug": "nodemon --inspect src/index.ts"
   },
   "keywords": [
     "typescript"
