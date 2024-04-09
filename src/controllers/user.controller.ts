@@ -243,14 +243,13 @@ const getCurrentUser = asyncHandler((req: Request, res: Response) => {
   );
 });
 
-const updateAccountDetails = asyncHandler((req: Request, res: Response) => {
+const updateAccountDetails = asyncHandler(async (req: Request, res: Response) => {
   const { fullName, email } = req.body;
 
   if (!fullName || !email) {
     throw new ApiError(400, "All fields are required");
   }
-
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     //@ts-ignore
     req.user._id,
     { $set: { fullName, email } },
@@ -354,7 +353,7 @@ const getUserChannelProfile = asyncHandler(
             $size: "$subscribedTo",
           },
           isSubscribed: {
-            $condition: {
+            $cond: {
               //@ts-ignore
               if: { $in: [req.user?._id, "$subscribers.subscriber"] },
               then: true,
@@ -396,7 +395,8 @@ const getWatchHistory = asyncHandler(async (req: Request, res: Response) => {
         //@ts-ignore
         _id: new mongoose.Types.ObjectId(req.user._id),
       },
-    },{
+    },
+    {
       $lookup: {
         from: "videos",
         localField: "wathcHistory",
